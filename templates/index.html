@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wordle Clone</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <h1>Wordle Clone</h1>
+    
+    <div id="instructions">
+        <h2>How to Play</h2>
+        <ul>
+            <li>Guess the 5-letter word in 6 tries.</li>
+            <li>Each guess must be a valid 5-letter word.</li>
+            <li>The color of the tiles will change to show how close your guess was:</li>
+            <ul>
+                <li><span style="color: #6aaa64;">Green</span>: The letter is correct and in the right position.</li>
+                <li><span style="color: #c9b458;">Yellow</span>: The letter is in the word but in the wrong position.</li>
+                <li><span style="color: #787c7e;">Gray</span>: The letter is not in the word.</li>
+            </ul>
+        </ul>
+    </div>
+
+    <div id="stats"></div>
+    <div id="game-board"></div>
+    <div id="keyboard"></div>
+    <div id="message"></div>
+    <button id="share-button">Share Results</button>
+    <div id="next-game-timer"></div>
+
+    <div id="debug-controls" style="display: none;">
+        <button id="debug-toggle">Toggle Debug Mode</button>
+        <button id="new-game-debug">New Game (Debug)</button>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
+</body>
+</html>
