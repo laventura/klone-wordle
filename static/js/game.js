@@ -5,6 +5,7 @@ let currentGuess = [];
 let guesses = [];
 let gameOver = false;
 let DEBUG_MODE = false;
+let currentMode = 'daily';
 
 const gameBoard = document.getElementById('game-board');
 const keyboard = document.getElementById('keyboard');
@@ -12,8 +13,12 @@ const messageElement = document.getElementById('message');
 const shareButton = document.getElementById('share-button');
 const statsElement = document.getElementById('stats');
 const nextGameTimerElement = document.getElementById('next-game-timer');
+const dailyModeButton = document.getElementById('daily-mode');
+const practiceModeButton = document.getElementById('practice-mode');
+const newPracticeGameButton = document.getElementById('new-practice-game');
 
 function createGameBoard() {
+    gameBoard.innerHTML = ''; // Clear existing content
     for (let i = 0; i < MAX_GUESSES; i++) {
         const row = document.createElement('div');
         row.className = 'word-row';
@@ -60,6 +65,7 @@ function createKeyboard() {
         keys.slice(19)
     ];
 
+    keyboard.innerHTML = ''; // Clear existing content
     keyboardLayout.forEach(row => {
         const keyboardRow = document.createElement('div');
         keyboardRow.className = 'keyboard-row';
@@ -102,7 +108,7 @@ function submitGuess() {
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ guess }),
+        body: JSON.stringify({ guess, mode: currentMode }),
     })
     .then(response => response.json())
     .then(data => {
@@ -150,10 +156,14 @@ function updateKeyboardColor(letter, result) {
 
 function endGame(won) {
     gameOver = true;
-    updateStats(won);
-    showMessage(won ? 'Congratulations! You won!' : 'Game over. Try again tomorrow!');
-    shareButton.style.display = 'block';
-    startNextGameTimer();
+    if (currentMode === 'daily') {
+        updateStats(won);
+        shareButton.style.display = 'block';
+        startNextGameTimer();
+    } else {
+        newPracticeGameButton.style.display = 'block';
+    }
+    showMessage(won ? 'Congratulations! You won!' : 'Game over. Try again!');
 }
 
 function showMessage(message, isError = false) {
@@ -207,21 +217,13 @@ function resetGame() {
     currentGuess = [];
     guesses = [];
     gameOver = false;
-    const rows = gameBoard.getElementsByClassName('word-row');
-    for (let row of rows) {
-        const letterBoxes = row.getElementsByClassName('letter-box');
-        for (let box of letterBoxes) {
-            box.textContent = '';
-            box.className = 'letter-box';
-        }
-    }
-    const keys = document.getElementsByClassName('key');
-    for (let key of keys) {
-        key.className = 'key';
-    }
+    createGameBoard(); // Recreate the game board
+    createKeyboard(); // Recreate the keyboard
     updateGameBoard();
     shareButton.style.display = 'none';
+    newPracticeGameButton.style.display = 'none';
     nextGameTimerElement.textContent = '';
+    showMessage('');
 }
 
 function startNewGameDebug() {
@@ -237,7 +239,41 @@ function startNewGameDebug() {
         } else {
             showMessage(`New game started. Debug word: ${data.debug_word}`);
             resetGame();
-            // Remove the window.location.reload() line
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('An error occurred. Please try again.', true);
+    });
+}
+
+function switchMode(mode) {
+    currentMode = mode;
+    resetGame();
+    if (mode === 'daily') {
+        dailyModeButton.classList.add('active');
+        practiceModeButton.classList.remove('active');
+        newPracticeGameButton.style.display = 'none';
+        displayStats();
+    } else {
+        dailyModeButton.classList.remove('active');
+        practiceModeButton.classList.add('active');
+        statsElement.textContent = '';
+        startNewPracticeGame();
+    }
+}
+
+function startNewPracticeGame() {
+    fetch('/api/new_practice_game', {
+        method: 'POST',
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            showMessage(data.error, true);
+        } else {
+            showMessage('New practice game started!');
+            resetGame();
         }
     })
     .catch(error => {
@@ -292,3 +328,11 @@ shareButton.addEventListener('click', () => {
         showMessage('Failed to copy results. Please try again.', true);
     });
 });
+
+// Add event listeners for mode switching and new practice game
+dailyModeButton.addEventListener('click', () => switchMode('daily'));
+practiceModeButton.addEventListener('click', () => switchMode('practice'));
+newPracticeGameButton.addEventListener('click', startNewPracticeGame);
+
+// Set initial mode
+switchMode('daily');

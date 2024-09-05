@@ -19,6 +19,9 @@ def get_daily_word():
     random.seed(seed)
     return random.choice(words).upper()
 
+def get_practice_word():
+    return random.choice(words).upper()
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -26,7 +29,15 @@ def index():
 @app.route('/api/check_word', methods=['POST'])
 def check_word():
     guess = request.json['guess'].upper()
-    target_word = get_daily_word()
+    mode = request.json.get('mode', 'daily')
+    
+    if mode == 'practice':
+        target_word = session.get('practice_word')
+        if not target_word:
+            target_word = get_practice_word()
+            session['practice_word'] = target_word
+    else:
+        target_word = get_daily_word()
     
     if len(guess) != 5 or guess.lower() not in words:
         return jsonify({'error': 'Invalid word'}), 400
@@ -61,6 +72,12 @@ def debug_new_game():
         return jsonify({'message': 'New game started', 'debug_word': new_word})
     else:
         return jsonify({'error': 'Debug mode is not enabled'}), 403
+
+@app.route('/api/new_practice_game', methods=['POST'])
+def new_practice_game():
+    new_word = get_practice_word()
+    session['practice_word'] = new_word
+    return jsonify({'message': 'New practice game started'})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

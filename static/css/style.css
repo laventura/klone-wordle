@@ -98,8 +98,7 @@ h1 {
     color: red;
 }
 
-#share-button {
-    display: none;
+#share-button, #new-practice-game {
     padding: 10px 20px;
     font-size: 16px;
     background-color: #4CAF50;
@@ -107,9 +106,10 @@ h1 {
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    margin-bottom: 10px;
 }
 
-#share-button:hover {
+#share-button:hover, #new-practice-game:hover {
     background-color: #45a049;
 }
 
@@ -127,6 +127,35 @@ h1 {
 #next-game-timer {
     font-size: 14px;
     color: #666;
+}
+
+#mode-toggle {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+#daily-mode, #practice-mode {
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #f0f0f0;
+    color: #333;
+    border: 1px solid #ccc;
+    cursor: pointer;
+}
+
+#daily-mode {
+    border-radius: 4px 0 0 4px;
+}
+
+#practice-mode {
+    border-radius: 0 4px 4px 0;
+}
+
+#daily-mode.active, #practice-mode.active {
+    background-color: #4CAF50;
+    color: white;
+    border-color: #4CAF50;
 }
 
 @media (max-width: 480px) {
