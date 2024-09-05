@@ -1,23 +1,21 @@
 const WORD_LENGTH = 5;
 const MAX_GUESSES = 6;
-
 let currentGuess = [];
 let guesses = [];
 let gameOver = false;
-let DEBUG_MODE = false;
 let currentMode = 'daily';
 
 const gameBoard = document.getElementById('game-board');
 const keyboard = document.getElementById('keyboard');
 const messageElement = document.getElementById('message');
 const shareButton = document.getElementById('share-button');
-const statsElement = document.getElementById('stats');
-const nextGameTimerElement = document.getElementById('next-game-timer');
+const newPracticeGameButton = document.getElementById('new-practice-game');
+const colorblindToggle = document.getElementById('colorblind-toggle');
 const dailyModeButton = document.getElementById('daily-mode');
 const practiceModeButton = document.getElementById('practice-mode');
-const newPracticeGameButton = document.getElementById('new-practice-game');
 
 function createGameBoard() {
+    console.log('Creating game board');
     gameBoard.innerHTML = ''; // Clear existing content
     for (let i = 0; i < MAX_GUESSES; i++) {
         const row = document.createElement('div');
@@ -29,9 +27,11 @@ function createGameBoard() {
         }
         gameBoard.appendChild(row);
     }
+    console.log('Game board created');
 }
 
 function updateGameBoard() {
+    console.log('Updating game board');
     const rows = gameBoard.getElementsByClassName('word-row');
     for (let i = 0; i < MAX_GUESSES; i++) {
         const row = rows[i];
@@ -50,32 +50,65 @@ function updateGameBoard() {
             }
         }
     }
+    console.log('Game board updated');
+}
+
+function toggleColorblindMode() {
+    console.log('Toggling colorblind mode');
+    document.body.classList.toggle('colorblind-mode');
+    localStorage.setItem('colorblind-mode', document.body.classList.contains('colorblind-mode'));
+    console.log('Colorblind mode toggled');
+}
+
+function toggleMode(mode) {
+    currentMode = mode;
+    if (mode === 'daily') {
+        dailyModeButton.classList.add('active');
+        practiceModeButton.classList.remove('active');
+        newPracticeGameButton.style.display = 'none';
+    } else {
+        dailyModeButton.classList.remove('active');
+        practiceModeButton.classList.add('active');
+        newPracticeGameButton.style.display = 'block';
+    }
+    resetGame();
+}
+
+function resetGame() {
+    currentGuess = [];
+    guesses = [];
+    gameOver = false;
+    createGameBoard();
+    updateGameBoard();
+    showMessage('');
+    shareButton.style.display = 'none';
 }
 
 function createKeyboard() {
     const keys = [
-        'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P',
-        'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L',
-        'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'Backspace', 'Clear', 'Enter'
+        ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+        ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+        ['Z', 'X', 'C', 'V', 'B', 'N', 'M', 'Backspace', 'Enter']
     ];
 
-    const keyboardLayout = [
-        keys.slice(0, 10),
-        keys.slice(10, 19),
-        keys.slice(19)
-    ];
-
-    keyboard.innerHTML = ''; // Clear existing content
-    keyboardLayout.forEach(row => {
+    keys.forEach((row, i) => {
         const keyboardRow = document.createElement('div');
         keyboardRow.className = 'keyboard-row';
         row.forEach(key => {
-            const keyButton = document.createElement('button');
-            keyButton.textContent = key;
-            keyButton.className = 'key';
-            keyButton.dataset.key = key;
-            keyButton.addEventListener('click', () => handleKeyPress(key));
-            keyboardRow.appendChild(keyButton);
+            const buttonElement = document.createElement('button');
+            if (key === 'Backspace') {
+                buttonElement.innerHTML = '&#x232b;'; // Unicode backspace symbol
+            } else if (key === 'Enter') {
+                buttonElement.innerHTML = '&#x23ce;'; // Unicode return symbol
+            } else {
+                buttonElement.textContent = key;
+            }
+            buttonElement.className = 'key';
+            if (key === 'Enter' || key === 'Backspace') {
+                buttonElement.classList.add('wide-key');
+            }
+            buttonElement.addEventListener('click', () => handleKeyPress(key));
+            keyboardRow.appendChild(buttonElement);
         });
         keyboard.appendChild(keyboardRow);
     });
@@ -90,10 +123,7 @@ function handleKeyPress(key) {
         if (currentGuess.length === WORD_LENGTH) {
             submitGuess();
         }
-    } else if (key === 'Clear') {
-        currentGuess = [];
-        showMessage('');
-    } else if (currentGuess.length < WORD_LENGTH && key.match(/^[A-Z]$/)) {
+    } else if (currentGuess.length < WORD_LENGTH) {
         currentGuess.push(key);
     }
 
@@ -102,30 +132,36 @@ function handleKeyPress(key) {
 
 function submitGuess() {
     const guess = currentGuess.join('');
-
     fetch('/api/check_word', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ guess, mode: currentMode }),
+        body: JSON.stringify({ guess: guess, mode: currentMode, guesses: guesses }),
     })
     .then(response => response.json())
     .then(data => {
         if (data.error) {
             showMessage(data.error, true);
-            return;
-        }
+        } else {
+            guesses.push(currentGuess.map((letter, index) => ({
+                letter: letter,
+                result: data.result[index]
+            })));
+            currentGuess = [];
+            updateGameBoard();
+            updateKeyboard(data.result);
 
-        guesses.push(currentGuess.map((letter, index) => ({ letter, result: data.result[index] })));
-        applyResult(data.result);
-        currentGuess = [];
-
-        if (data.correct || guesses.length === MAX_GUESSES) {
-            endGame(data.correct);
+            if (data.correct) {
+                showMessage('Congratulations! You guessed the word!');
+                gameOver = true;
+                shareButton.style.display = 'block';
+            } else if (guesses.length === MAX_GUESSES) {
+                showMessage(`Game over. The word was: ${data.word}`);
+                gameOver = true;
+                shareButton.style.display = 'block';
+            }
         }
-        
-        updateGameBoard();
     })
     .catch(error => {
         console.error('Error:', error);
@@ -133,37 +169,14 @@ function submitGuess() {
     });
 }
 
-function applyResult(result) {
-    const row = gameBoard.getElementsByClassName('word-row')[guesses.length - 1];
-    const letterBoxes = row.getElementsByClassName('letter-box');
-
-    for (let i = 0; i < WORD_LENGTH; i++) {
-        letterBoxes[i].classList.add(result[i]);
-        updateKeyboardColor(guesses[guesses.length - 1][i].letter, result[i]);
-    }
-}
-
-function updateKeyboardColor(letter, result) {
-    const key = document.querySelector(`.key:not(.correct):not(.present):not(.absent):not(.incorrect)[data-key="${letter}"]`);
-    if (key) {
-        if (result === 'absent') {
-            key.classList.add('incorrect');
-        } else {
-            key.classList.add(result);
+function updateKeyboard(result) {
+    const keys = keyboard.getElementsByClassName('key');
+    for (let i = 0; i < currentGuess.length; i++) {
+        const keyElement = Array.from(keys).find(key => key.textContent === currentGuess[i]);
+        if (keyElement) {
+            keyElement.classList.add(result[i]);
         }
     }
-}
-
-function endGame(won) {
-    gameOver = true;
-    if (currentMode === 'daily') {
-        updateStats(won);
-        shareButton.style.display = 'block';
-        startNextGameTimer();
-    } else {
-        newPracticeGameButton.style.display = 'block';
-    }
-    showMessage(won ? 'Congratulations! You won!' : 'Game over. Try again!');
 }
 
 function showMessage(message, isError = false) {
@@ -171,124 +184,7 @@ function showMessage(message, isError = false) {
     messageElement.className = isError ? 'error-message' : '';
 }
 
-function updateStats(won) {
-    let stats = JSON.parse(localStorage.getItem('wordleStats')) || { played: 0, won: 0, streak: 0, maxStreak: 0 };
-    stats.played++;
-    if (won) {
-        stats.won++;
-        stats.streak++;
-        stats.maxStreak = Math.max(stats.maxStreak, stats.streak);
-    } else {
-        stats.streak = 0;
-    }
-    localStorage.setItem('wordleStats', JSON.stringify(stats));
-    displayStats();
-}
-
-function displayStats() {
-    const stats = JSON.parse(localStorage.getItem('wordleStats')) || { played: 0, won: 0, streak: 0, maxStreak: 0 };
-    statsElement.textContent = `Games played: ${stats.played} | Win rate: ${Math.round((stats.won / stats.played) * 100) || 0}% | Current streak: ${stats.streak} | Max streak: ${stats.maxStreak}`;
-}
-
-function startNextGameTimer() {
-    fetch('/api/get_next_game_time')
-        .then(response => response.json())
-        .then(data => {
-            const updateTimer = () => {
-                const hours = Math.floor(data.seconds / 3600);
-                const minutes = Math.floor((data.seconds % 3600) / 60);
-                const seconds = data.seconds % 60;
-                nextGameTimerElement.textContent = `Next Wordle in: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                if (data.seconds > 0) {
-                    data.seconds--;
-                    setTimeout(updateTimer, 1000);
-                } else {
-                    nextGameTimerElement.textContent = 'New Wordle available now!';
-                }
-            };
-            updateTimer();
-        })
-        .catch(error => {
-            console.error('Error fetching next game time:', error);
-        });
-}
-
-function resetGame() {
-    currentGuess = [];
-    guesses = [];
-    gameOver = false;
-    createGameBoard(); // Recreate the game board
-    createKeyboard(); // Recreate the keyboard
-    updateGameBoard();
-    shareButton.style.display = 'none';
-    newPracticeGameButton.style.display = 'none';
-    nextGameTimerElement.textContent = '';
-    showMessage('');
-}
-
-function startNewGameDebug() {
-    if (!DEBUG_MODE) return;
-    
-    fetch('/api/debug/new_game', {
-        method: 'POST',
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.error) {
-            showMessage(data.error, true);
-        } else {
-            showMessage(`New game started. Debug word: ${data.debug_word}`);
-            resetGame();
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showMessage('An error occurred. Please try again.', true);
-    });
-}
-
-function switchMode(mode) {
-    currentMode = mode;
-    resetGame();
-    if (mode === 'daily') {
-        dailyModeButton.classList.add('active');
-        practiceModeButton.classList.remove('active');
-        newPracticeGameButton.style.display = 'none';
-        displayStats();
-    } else {
-        dailyModeButton.classList.remove('active');
-        practiceModeButton.classList.add('active');
-        statsElement.textContent = '';
-        startNewPracticeGame();
-    }
-}
-
-function startNewPracticeGame() {
-    fetch('/api/new_practice_game', {
-        method: 'POST',
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.error) {
-            showMessage(data.error, true);
-        } else {
-            showMessage('New practice game started!');
-            resetGame();
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showMessage('An error occurred. Please try again.', true);
-    });
-}
-
-// Initialize the game
-createGameBoard();
-createKeyboard();
-displayStats();
-updateGameBoard();
-
-// Add event listener for physical keyboard
+// Event listeners
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Backspace') {
         handleKeyPress('Backspace');
@@ -298,21 +194,6 @@ document.addEventListener('keydown', (e) => {
         handleKeyPress(e.key.toUpperCase());
     }
 });
-
-// Add debug controls
-const debugControls = document.getElementById('debug-controls');
-const debugToggle = document.getElementById('debug-toggle');
-const newGameDebug = document.getElementById('new-game-debug');
-
-debugToggle.addEventListener('click', () => {
-    DEBUG_MODE = !DEBUG_MODE;
-    showMessage(DEBUG_MODE ? 'Debug mode enabled' : 'Debug mode disabled');
-});
-
-newGameDebug.addEventListener('click', startNewGameDebug);
-
-// Show debug controls
-debugControls.style.display = 'block';
 
 shareButton.addEventListener('click', () => {
     const shareText = guesses.map(guess => 
@@ -329,10 +210,31 @@ shareButton.addEventListener('click', () => {
     });
 });
 
-// Add event listeners for mode switching and new practice game
-dailyModeButton.addEventListener('click', () => switchMode('daily'));
-practiceModeButton.addEventListener('click', () => switchMode('practice'));
-newPracticeGameButton.addEventListener('click', startNewPracticeGame);
+colorblindToggle.addEventListener('click', toggleColorblindMode);
+dailyModeButton.addEventListener('click', () => toggleMode('daily'));
+practiceModeButton.addEventListener('click', () => toggleMode('practice'));
 
-// Set initial mode
-switchMode('daily');
+newPracticeGameButton.addEventListener('click', () => {
+    if (currentMode === 'practice') {
+        resetGame();
+    }
+});
+
+// Initialize the game
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM fully loaded');
+    createGameBoard();
+    createKeyboard();
+    updateGameBoard();
+
+    // Load colorblind mode setting from localStorage
+    if (localStorage.getItem('colorblind-mode') === 'true') {
+        console.log('Applying colorblind mode from localStorage');
+        document.body.classList.add('colorblind-mode');
+    }
+
+    // Set initial mode
+    toggleMode('daily');
+
+    console.log('Game initialization complete');
+});

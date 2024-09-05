@@ -53,7 +53,8 @@ def check_word():
 
     return jsonify({
         'result': result,
-        'correct': guess == target_word
+        'correct': guess == target_word,
+        'word': target_word if guess != target_word and len(request.json.get('guesses', [])) == 5 else None
     })
 
 @app.route('/api/get_next_game_time')

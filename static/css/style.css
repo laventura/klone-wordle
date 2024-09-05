@@ -55,6 +55,22 @@ h1 {
     border-color: #787c7e;
 }
 
+/* Colorblind mode styles */
+.colorblind-mode .correct {
+    background-color: #f5793a;
+    border-color: #f5793a;
+}
+
+.colorblind-mode .present {
+    background-color: #85c0f9;
+    border-color: #85c0f9;
+}
+
+.colorblind-mode .absent {
+    background-color: #787c7e;
+    border-color: #787c7e;
+}
+
 #keyboard {
     display: grid;
     grid-template-rows: repeat(3, 1fr);
@@ -88,6 +104,11 @@ h1 {
     color: white;
 }
 
+.wide-key {
+    flex: 1.5;
+    font-size: 24px;
+}
+
 #message {
     font-size: 18px;
     font-weight: bold;
@@ -98,7 +119,7 @@ h1 {
     color: red;
 }
 
-#share-button, #new-practice-game {
+#share-button, #new-practice-game, #colorblind-toggle {
     padding: 10px 20px;
     font-size: 16px;
     background-color: #4CAF50;
@@ -109,7 +130,7 @@ h1 {
     margin-bottom: 10px;
 }
 
-#share-button:hover, #new-practice-game:hover {
+#share-button:hover, #new-practice-game:hover, #colorblind-toggle:hover {
     background-color: #45a049;
 }
 
@@ -156,6 +177,12 @@ h1 {
     background-color: #4CAF50;
     color: white;
     border-color: #4CAF50;
+}
+
+#colorblind-description {
+    font-size: 14px;
+    color: #666;
+    margin-top: 5px;
 }
 
 @media (max-width: 480px) {
